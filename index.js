@@ -43,7 +43,7 @@ const buildRegex = (word) => {
   CORRECT = `(?=${CORRECT})`
   WRONG = `(?=${WRONG})`
 
-  let POSSIBLE = IN_WRONG_PLACE.map(l => `(?=.*${l})`).join()
+  let POSSIBLE = IN_WRONG_PLACE.map(l => `(?=.*${l})`).join('')
 
   return new RegExp(
     // String starts with
@@ -68,27 +68,20 @@ const buildRegex = (word) => {
     );
 };
 
-// const guess = "AULCB";
-// let regex = buildRegex(guess);
-// console.log('regex1', regex);
-// const guess2 = "ATKLE";
-// regex = buildRegex(guess2);
-// console.log('regex2', regex);
-// const guess3 = "ANKLE";
-// regex = buildRegex(guess3);
-// console.log(regex);
-
 try {
-  let WORDS = fs.readFileSync("word-list-5-uniq.txt", "utf8");
+  let WORDLIST = fs.readFileSync("word-list-5-uniq.txt", "utf8");
+  let REMAINING_WORDS = WORDLIST.split("\n");
   let guess;
-  while (WORDS.length > 1) {
-    guess = WORDS.split('\n')[Math.floor(Math.random() * WORDS.length)]
-    console.log(`Guessing: ${guess}`)
+  let count = 1
+  while (REMAINING_WORDS.length !== 1) {
+    guess = REMAINING_WORDS[Math.floor(Math.random() * REMAINING_WORDS.length)]
+    console.log(`Guessing ${count++}: ${guess}`)
     const regex = buildRegex(guess)
-    console.log(`Using regex ${regex}`);
-    WORDS = WORDS.match(regex).join('\n')
+    // console.log(`Using regex ${regex}`);
+    REMAINING_WORDS = WORDLIST.match(regex)
+    WORDLIST = REMAINING_WORDS.join('\n')
   }
-  console.log(matched);
+  console.log(`CORRECT ANSWER: ${WORDLIST}`);
 } catch (e) {
   console.log("Error:", e.stack);
 }
