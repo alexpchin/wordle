@@ -12,6 +12,7 @@ const buildRegex = (wordle, guess) => {
       CORRECT_GUESS[i] = letter;
     } else {
       if (wordle.includes(letter)) {
+        // TODO: Improve to match mutiple letters, e.g. L in HELLO 
         IN_WRONG_PLACE.push(letter);
       }
       // Even though the letter is present, it's specifically not here
@@ -41,6 +42,7 @@ const buildRegex = (wordle, guess) => {
   CORRECT = `(?=${CORRECT})`
   WRONG = `(?=${WRONG})`
 
+  // TODO: Improve to match mutiple letters, e.g. L in HELLO 
   let POSSIBLE = IN_WRONG_PLACE.map(l => `(?=.*${l})`).join('')
 
   return new RegExp(
@@ -67,11 +69,11 @@ const buildRegex = (wordle, guess) => {
 };
 
 try {
-  const SOLUTIONS = fs.readFileSync("word-list-5.txt", "utf8");
+  const SOLUTIONS = fs.readFileSync("solutions.txt", "utf8");
   // Choose solution
   const SOLUTIONS_WORDS = SOLUTIONS.split("\n");
   const WORDLE = SOLUTIONS_WORDS[Math.floor(Math.random() * SOLUTIONS_WORDS.length)]
-  let WORDLIST = fs.readFileSync("word-list-5-uniq.txt", "utf8");
+  let WORDLIST = fs.readFileSync("word-list-5.txt", "utf8");
   let REMAINING_WORDS = WORDLIST.split("\n");
   let guess;
   let count = 1
