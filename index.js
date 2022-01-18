@@ -56,7 +56,7 @@ const buildRegex = (
   WRONG_PLACE = `(?=${WRONG_PLACE})`
   POSSIBLE = [...new Set(APPEARS_IN_WORD)].map(l => `(?=.*${l})`).join('')
   if (DOESNT_APPEAR.length) {
-    WRONG += `(?=.*[^${DOESNT_APPEAR.join('')}])`
+    WRONG += `(?=\\b[^\\W${DOESNT_APPEAR.join('')}]+\\b)`
   }
 
   return new RegExp(
@@ -72,8 +72,8 @@ const buildRegex = (
     // Possible letters (To improve, not in specic place) (YELLOW)
     // (?=.*A)(?=.*B)(?=.*C)
     POSSIBLE +
-    // Don't appear (GRAY), T
-    // (?=\b[^\WT]+\b)
+    // Don't appear (GRAY), T (have to add double backslash!)
+    // (?=\\b[^\\WT]+\\b)
     WRONG +
     // Finish with positive lookahead
     // .*
