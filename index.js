@@ -17,6 +17,7 @@ const buildRegex = (
     } else {
       if (wordle.includes(letter)) {
         APPEARS_IN_WORD.push(letter);
+
         // Even though the letter is present, it's specifically not here
         if (WRONG_POSITION[i]) {
           WRONG_POSITION[i] += letter;
