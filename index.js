@@ -1,9 +1,6 @@
 const fs = require("fs");
 
-const buildRegex = (wordle, guess) => {
-  const CORRECT_GUESS = new Array(5);
-  const IN_WRONG_PLACE = [];
-  const WRONG_GUESS = new Array(5);
+const buildRegex = (CORRECT_GUESS, IN_WRONG_PLACE, WRONG_GUESS, wordle, guess) => {
   const letters = guess.split("");
 
   // Assign guesses
@@ -12,8 +9,12 @@ const buildRegex = (wordle, guess) => {
       CORRECT_GUESS[i] = letter;
     } else {
       if (wordle.includes(letter)) {
-        // TODO: Improve to match mutiple letters, e.g. L in HELLO 
-        IN_WRONG_PLACE.push(letter);
+        const numberOfOccurances = wordle.match(new RegExp(letter, 'gi')).length
+        // If you guess a repeated letter more times than it appears in the word of the day, the first use of that letter will turn yellow and the second will turn gray
+        const letterAlreadyGuessed = IN_WRONG_PLACE.filter(x => x == letter).length
+        if (numberOfOccurances > letterAlreadyGuessed) {
+          IN_WRONG_PLACE.push(letter);
+        }
       }
       // Even though the letter is present, it's specifically not here
       if (WRONG_GUESS[i]) {
@@ -41,9 +42,8 @@ const buildRegex = (wordle, guess) => {
   }
   CORRECT = `(?=${CORRECT})`
   WRONG = `(?=${WRONG})`
-
-  // TODO: Improve to match mutiple letters, e.g. L in HELLO 
-  let POSSIBLE = IN_WRONG_PLACE.map(l => `(?=.*${l})`).join('')
+  
+  let POSSIBLE = [...new Set(IN_WRONG_PLACE)].map(l => `(?=.*${l}{${IN_WRONG_PLACE.filter(x => x == l).length},})`).join('')
 
   return new RegExp(
     // String starts with
@@ -55,9 +55,8 @@ const buildRegex = (wordle, guess) => {
     // Not letters
     // (?=[^K][^KA][^A][^KA])
     WRONG +
-    // WHAT ABOUT MORE THAN ONE?
     // Possible letters
-    // (?=.*A)(?=.*B)(?=.*C)
+    // (?=.*A{1,})(?=.*B{2,})(?=.*C{2,})
     POSSIBLE +
     // Finish with positive lookahead
     // .*
@@ -77,11 +76,19 @@ try {
   let REMAINING_WORDS = WORDLIST.split("\n");
   let guess;
   let count = 1
+  const CORRECT_GUESS = new Array(5);
+  const IN_WRONG_PLACE = [];
+  const WRONG_GUESS = new Array(5);
   while (REMAINING_WORDS.length !== 1) {
-    guess = REMAINING_WORDS[Math.floor(Math.random() * REMAINING_WORDS.length)]
+    // Start with good vowel-heavy word
+    if (!guess) {
+      guess = 'ADIEU'
+    } else {
+      guess = REMAINING_WORDS[Math.floor(Math.random() * REMAINING_WORDS.length)]
+    }
     console.log(`Guessing ${count++}: ${guess}`)
-    const regex = buildRegex(WORDLE, guess)
-    // console.log(`Using regex ${regex}`);
+    const regex = buildRegex(CORRECT_GUESS, IN_WRONG_PLACE, WRONG_GUESS, WORDLE, guess)
+    // console.log(`Using regex: ${regex}`);
     REMAINING_WORDS = WORDLIST.match(regex)
     WORDLIST = REMAINING_WORDS.join('\n')
   }
