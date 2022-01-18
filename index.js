@@ -1,6 +1,13 @@
 const fs = require("fs");
 
-const buildRegex = (CORRECT_GUESS, IN_WRONG_PLACE, WRONG_GUESS, wordle, guess) => {
+const buildRegex = (
+  CORRECT_GUESS, 
+  APPEARS_IN_WORD, 
+  WRONG_POSITION, 
+  DOESNT_APPEAR, 
+  wordle, 
+  guess
+) => {
   const letters = guess.split("");
 
   // Assign guesses
@@ -9,24 +16,27 @@ const buildRegex = (CORRECT_GUESS, IN_WRONG_PLACE, WRONG_GUESS, wordle, guess) =
       CORRECT_GUESS[i] = letter;
     } else {
       if (wordle.includes(letter)) {
-        const numberOfOccurances = wordle.match(new RegExp(letter, 'gi')).length
-        // If you guess a repeated letter more times than it appears in the word of the day, the first use of that letter will turn yellow and the second will turn gray
-        const letterAlreadyGuessed = IN_WRONG_PLACE.filter(x => x == letter).length
-        if (numberOfOccurances > letterAlreadyGuessed) {
-          IN_WRONG_PLACE.push(letter);
+        APPEARS_IN_WORD.push(letter);
+        // Even though the letter is present, it's specifically not here
+        if (WRONG_POSITION[i]) {
+          WRONG_POSITION[i] += letter;
+        } else {
+          // Prevent undefineds
+          WRONG_POSITION[i] = letter
         }
-      }
-      // Even though the letter is present, it's specifically not here
-      if (WRONG_GUESS[i]) {
-        WRONG_GUESS[i] += letter;
       } else {
-        // Prevent undefineds
-        WRONG_GUESS[i] = letter
+        // Letter doesn't exist in the word at all
+        // Only add once
+        if (!DOESNT_APPEAR.includes(letter)) {
+          DOESNT_APPEAR.push(letter)
+        }
       }
     }
   }
 
   let CORRECT = ''
+  let WRONG_PLACE = ''
+  let POSSIBLE = ''
   let WRONG = ''
   for (const i of [...Array(5).keys()]) {
     if (CORRECT_GUESS[i]) {
@@ -34,30 +44,37 @@ const buildRegex = (CORRECT_GUESS, IN_WRONG_PLACE, WRONG_GUESS, wordle, guess) =
     } else {
       CORRECT += '.'
     }
-    if (WRONG_GUESS[i]) {
-      WRONG += `[^${WRONG_GUESS[i]}]`;
+
+    if (WRONG_POSITION[i]) {
+      WRONG_PLACE += `[^${WRONG_POSITION[i]}]`;
     } else {
-      WRONG += '.'
+      WRONG_PLACE += '.'
     }
   }
-  CORRECT = `(?=${CORRECT})`
-  WRONG = `(?=${WRONG})`
   
-  let POSSIBLE = [...new Set(IN_WRONG_PLACE)].map(l => `(?=.*${l}{${IN_WRONG_PLACE.filter(x => x == l).length},})`).join('')
+  CORRECT = `(?=${CORRECT})`
+  WRONG_PLACE = `(?=${WRONG_PLACE})`
+  POSSIBLE = [...new Set(APPEARS_IN_WORD)].map(l => `(?=.*${l})`).join('')
+  if (DOESNT_APPEAR.length) {
+    WRONG += `(?=.*[^${DOESNT_APPEAR.join('')}])`
+  }
 
   return new RegExp(
     // String starts with
     // ^
     `^` +
-    // Correct letters
+    // Correct letters (GREEN)
     // (?=A.K..)
     CORRECT +
-    // Not letters
+    // Letter exists but not in that place (YELLOW)
     // (?=[^K][^KA][^A][^KA])
-    WRONG +
-    // Possible letters
-    // (?=.*A{1,})(?=.*B{2,})(?=.*C{2,})
+    WRONG_PLACE +
+    // Possible letters (To improve, not in specic place) (YELLOW)
+    // (?=.*A)(?=.*B)(?=.*C)
     POSSIBLE +
+    // Don't appear (GRAY), T
+    // (?=\b[^\WT]+\b)
+    WRONG +
     // Finish with positive lookahead
     // .*
     '.*', 
@@ -67,32 +84,47 @@ const buildRegex = (CORRECT_GUESS, IN_WRONG_PLACE, WRONG_GUESS, wordle, guess) =
     );
 };
 
+const SOLUTIONS = fs.readFileSync("solutions.txt", "utf8");
+const SOLUTIONS_WORDS = SOLUTIONS.split("\n");
+const WORDLE = SOLUTIONS_WORDS[Math.floor(Math.random() * SOLUTIONS_WORDS.length)]
+let WORDLIST = fs.readFileSync("word-list-5.txt", "utf8");
+let REMAINING_WORDS = WORDLIST.split("\n");
+let guess;
+let count = 1
+const CORRECT_GUESS = new Array(5);
+const APPEARS_IN_WORD = [];
+const WRONG_POSITION = new Array(5);
+const DOESNT_APPEAR = [];
+let REGEX;
+
 try {
-  const SOLUTIONS = fs.readFileSync("solutions.txt", "utf8");
-  // Choose solution
-  const SOLUTIONS_WORDS = SOLUTIONS.split("\n");
-  const WORDLE = SOLUTIONS_WORDS[Math.floor(Math.random() * SOLUTIONS_WORDS.length)]
-  let WORDLIST = fs.readFileSync("word-list-5.txt", "utf8");
-  let REMAINING_WORDS = WORDLIST.split("\n");
-  let guess;
-  let count = 1
-  const CORRECT_GUESS = new Array(5);
-  const IN_WRONG_PLACE = [];
-  const WRONG_GUESS = new Array(5);
   while (REMAINING_WORDS.length !== 1) {
     // Start with good vowel-heavy word
     if (!guess) {
-      guess = 'ADIEU'
+      // guess = 'ADIEU'
+      guess = 'ROATE'
     } else {
+      // IMPROVEMENTS should be made here!
       guess = REMAINING_WORDS[Math.floor(Math.random() * REMAINING_WORDS.length)]
     }
     console.log(`Guessing ${count++}: ${guess}`)
-    const regex = buildRegex(CORRECT_GUESS, IN_WRONG_PLACE, WRONG_GUESS, WORDLE, guess)
-    // console.log(`Using regex: ${regex}`);
-    REMAINING_WORDS = WORDLIST.match(regex)
+    REGEX = buildRegex(
+      CORRECT_GUESS, 
+      APPEARS_IN_WORD, 
+      WRONG_POSITION, 
+      DOESNT_APPEAR, 
+      WORDLE, 
+      guess
+    )
+    // console.log(`Using regex: ${REGEX}`);
+    REMAINING_WORDS = WORDLIST.match(REGEX)
+    // console.log('REMAINING_WORDS', REMAINING_WORDS)
     WORDLIST = REMAINING_WORDS.join('\n')
   }
   console.log(`CORRECT ANSWER: ${WORDLIST}`);
+  console.log(`Using regex: ${REGEX}`);
 } catch (e) {
+  console.log(`CORRECT ANSWER: ${WORDLE}`);
+  console.log(`Using regex: ${REGEX}`);
   console.log("Error:", e.stack);
 }
