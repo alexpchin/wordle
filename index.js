@@ -1,19 +1,17 @@
 const fs = require("fs");
 
-const WORDLE = "ANKLE";
-const CORRECT_GUESS = new Array(5);
-const IN_WRONG_PLACE = [];
-const WRONG_GUESS = new Array(5);
-
-const buildRegex = (word) => {
-  const letters = word.split("");
+const buildRegex = (wordle, guess) => {
+  const CORRECT_GUESS = new Array(5);
+  const IN_WRONG_PLACE = [];
+  const WRONG_GUESS = new Array(5);
+  const letters = guess.split("");
 
   // Assign guesses
   for (const [i, letter] of letters.entries()) {
-    if (WORDLE[i] === letter) {
+    if (wordle[i] === letter) {
       CORRECT_GUESS[i] = letter;
     } else {
-      if (WORDLE.includes(letter)) {
+      if (wordle.includes(letter)) {
         IN_WRONG_PLACE.push(letter);
       }
       // Even though the letter is present, it's specifically not here
@@ -69,6 +67,10 @@ const buildRegex = (word) => {
 };
 
 try {
+  const SOLUTIONS = fs.readFileSync("word-list-5.txt", "utf8");
+  // Choose solution
+  const SOLUTIONS_WORDS = SOLUTIONS.split("\n");
+  const WORDLE = SOLUTIONS_WORDS[Math.floor(Math.random() * SOLUTIONS_WORDS.length)]
   let WORDLIST = fs.readFileSync("word-list-5-uniq.txt", "utf8");
   let REMAINING_WORDS = WORDLIST.split("\n");
   let guess;
@@ -76,7 +78,7 @@ try {
   while (REMAINING_WORDS.length !== 1) {
     guess = REMAINING_WORDS[Math.floor(Math.random() * REMAINING_WORDS.length)]
     console.log(`Guessing ${count++}: ${guess}`)
-    const regex = buildRegex(guess)
+    const regex = buildRegex(WORDLE, guess)
     // console.log(`Using regex ${regex}`);
     REMAINING_WORDS = WORDLIST.match(regex)
     WORDLIST = REMAINING_WORDS.join('\n')
