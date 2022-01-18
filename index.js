@@ -10,6 +10,11 @@ const buildRegex = (
 ) => {
   const letters = guess.split("");
 
+  let CORRECT = ''
+  let WRONG_PLACE = ''
+  let POSSIBLE = ''
+  let WRONG = ''
+
   // Assign guesses
   for (const [i, letter] of letters.entries()) {
     if (wordle[i] === letter) {
@@ -33,13 +38,8 @@ const buildRegex = (
         }
       }
     }
-  }
 
-  let CORRECT = ''
-  let WRONG_PLACE = ''
-  let POSSIBLE = ''
-  let WRONG = ''
-  for (const i of [...Array(5).keys()]) {
+    // BUILD REGEX
     if (CORRECT_GUESS[i]) {
       CORRECT += CORRECT_GUESS[i];
     } else {
@@ -52,10 +52,10 @@ const buildRegex = (
       WRONG_PLACE += '.'
     }
   }
-  
-  CORRECT = `(?=${CORRECT})`
-  WRONG_PLACE = `(?=${WRONG_PLACE})`
+
+  // Series of lookahead assertions:
   POSSIBLE = [...new Set(APPEARS_IN_WORD)].map(l => `(?=.*${l})`).join('')
+
   if (DOESNT_APPEAR.length) {
     WRONG += `(?=\\b[^\\W${DOESNT_APPEAR.join('')}]+\\b)`
   }
@@ -66,10 +66,10 @@ const buildRegex = (
     `^` +
     // Correct letters (GREEN)
     // (?=A.K..)
-    CORRECT +
+    `(?=${CORRECT})` +
     // Letter exists but not in that place (YELLOW)
     // (?=[^K][^KA][^A][^KA])
-    WRONG_PLACE +
+    `(?=${WRONG_PLACE})` +
     // Possible letters (To improve, not in specic place) (YELLOW)
     // (?=.*A)(?=.*B)(?=.*C)
     POSSIBLE +
@@ -88,10 +88,10 @@ const buildRegex = (
 const SOLUTIONS = fs.readFileSync("solutions.txt", "utf8");
 const SOLUTIONS_WORDS = SOLUTIONS.split("\n");
 const WORDLE = SOLUTIONS_WORDS[Math.floor(Math.random() * SOLUTIONS_WORDS.length)]
-let WORDLIST = fs.readFileSync("word-list-5.txt", "utf8");
+let WORDLIST = fs.readFileSync("word-list-wordle.txt", "utf8");
 let REMAINING_WORDS = WORDLIST.split("\n");
-let guess;
-let count = 1
+let GUESS;
+let COUNT = 1
 const CORRECT_GUESS = new Array(5);
 const APPEARS_IN_WORD = [];
 const WRONG_POSITION = new Array(5);
@@ -100,32 +100,29 @@ let REGEX;
 
 try {
   while (REMAINING_WORDS.length !== 1) {
-    // Start with good vowel-heavy word
-    if (!guess) {
-      // guess = 'ADIEU'
-      guess = 'ROATE'
+    if (!GUESS) {
+      // Start with good vowel-heavy word
+      GUESS = 'ADIEU'
     } else {
       // IMPROVEMENTS should be made here!
-      guess = REMAINING_WORDS[Math.floor(Math.random() * REMAINING_WORDS.length)]
+      GUESS = REMAINING_WORDS[Math.floor(Math.random() * REMAINING_WORDS.length)]
     }
-    console.log(`Guessing ${count++}: ${guess}`)
+    console.log(`Guess ${COUNT++}: ${GUESS}`)
     REGEX = buildRegex(
       CORRECT_GUESS, 
       APPEARS_IN_WORD, 
       WRONG_POSITION, 
       DOESNT_APPEAR, 
       WORDLE, 
-      guess
+      GUESS
     )
-    // console.log(`Using regex: ${REGEX}`);
     REMAINING_WORDS = WORDLIST.match(REGEX)
-    // console.log('REMAINING_WORDS', REMAINING_WORDS)
     WORDLIST = REMAINING_WORDS.join('\n')
   }
-  console.log(`CORRECT ANSWER: ${WORDLIST}`);
+  console.log(`\nCORRECT ANSWER: ${WORDLIST}`);
   console.log(`Using regex: ${REGEX}`);
 } catch (e) {
-  console.log(`CORRECT ANSWER: ${WORDLE}`);
+  console.log(`\nCORRECT ANSWER: ${WORDLE}`);
   console.log(`Using regex: ${REGEX}`);
   console.log("Error:", e.stack);
 }
