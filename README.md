@@ -1,6 +1,42 @@
 ## Wordle Solver
 
+To run:
+
+```
+node index.js
+```
+
 ### Pseudo-code
+
+The strategy is to create a regex that will filter out all possible words from the list for each guess. The regex will be constructed as follows:
+
+```
+^(?=match all GREEN words)(?=match all YELLOW words)(?=omit all GRAY words))
+```
+
+Regex structure
+
+```
+new RegExp(
+// String starts with, ^
+`^` +
+// Correct letters (GREEN), (?=A.K..)
+`(?=${CORRECT})` +
+// Letter exists but not in that place (YELLOW), (?=[^K][^KA][^A][^KA])
+`(?=${WRONG_PLACE})` +
+// Possible letters (To improve, not in specic place) (YELLOW), (?=.*A)(?=.*B)(?=.*C)
+POSSIBLE +
+// Don't appear (GRAY), T (have to add double backslash!), (?=\\b[^\\WT]+\\b)
+WRONG +
+// Finish with positive lookahead, .*
+'.*', 
+// g = global
+// m = match newline
+'gm'
+)
+``
+
+### The game
 
 `_`,`_`,`_`,`_`,`_`
 
