@@ -24,7 +24,8 @@ new RegExp(
 `(?=${CORRECT})` +
 // Letter exists but not in that place (YELLOW), (?=[^K][^KA][^A][^KA])
 `(?=${WRONG_PLACE})` +
-// Possible letters (To improve, not in specic place) (YELLOW), (?=.*A)(?=.*B)(?=.*C)
+// Possible letters (YELLOW), (?=.*A)(?=.*B)(?=.*C)
+// With counts, (?=.*E{2,}.*)
 POSSIBLE +
 // Don't appear (GRAY), T (have to add double backslash!), (?=\\b[^\\WT]+\\b)
 WRONG +

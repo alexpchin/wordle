@@ -15,30 +15,39 @@ const buildRegex = (
   let yellow = '';
   let gray = '';
 
-  for (const [i, letter] of letters.entries()) {
-    if (wordle[i] === letter) {
-      correctGuess[i] = letter;
-    } else {
-      if (wordle.includes(letter)) {
-        // ENSURE NOT ADDED MORE TIMES THAN IN WORD
-        // Not working
-        // const numberOfOccurances = wordle.split('').filter(n => n === letter).length;
-        // const appears = appearsInWord.filter(n => n === letter).length;
-        // if (appears < numberOfOccurances) {
-        //   appearsInWord.push(letter);
-        // }
-        // SIMPLE
-        appearsInWord.push(letter);
+  let duplicateLetters = {};
 
-        // Even though the letter is present, it's specifically not here
-        if (wrongPosition[i]) {
-          wrongPosition[i] += letter
-        }  else {
-          wrongPosition[i] = letter
+  for (const [i, l] of letters.entries()) {
+    if (wordle[i] === l) {
+      correctGuess[i] = l;
+    } else {
+      if (wordle.includes(l)) {
+        // If the letter is not the first example in the guess
+        const letterIndices = letters.map((x, y) => x === l ? y : undefined).filter(Boolean)
+        const numberOfOccurancesInWordle = wordle.split('').filter((w) => w === l).length;
+        const firstGuessOfLetter = !duplicateLetters[l];
+        const duplicateGuessOfLetter = duplicateLetters[l] < i;
+        const duplicatePresentInWordle = numberOfOccurancesInWordle >= i+1;
+
+        if (firstGuessOfLetter || duplicateGuessOfLetter && duplicatePresentInWordle) {
+          // Save position of last guessed duplicate letter
+          duplicateLetters[l] = i;
+
+          const numberOfTimesGuessed = appearsInWord.filter(a => a === l).length
+          if (numberOfOccurancesInWordle > numberOfTimesGuessed) {
+            appearsInWord.push(l);
+          }
+
+          // Even though the letter is present, it's specifically not here
+          if (wrongPosition[i]) {
+            wrongPosition[i] += l
+          }  else {
+            wrongPosition[i] = l
+          }
         }
       } else {
         // Letter doesn't exist in the word at all, only add once
-        if (!doesntAppear.includes(letter)) doesntAppear.push(letter)
+        if (!doesntAppear.includes(l)) doesntAppear.push(l)
       }
     }
 
@@ -47,10 +56,10 @@ const buildRegex = (
   }
 
   // Without letter counts
-  yellow = [...new Set(appearsInWord)].map(l => `(?=.*${l})`).join('')
+  // yellow = [...new Set(appearsInWord)].map(a => `(?=.*${a})`).join('')
   
-  // Doesn't work... With letter counts
-  // yellow = [...new Set(appearsInWord)].map(l => `(?=.*${l}{${appearsInWord.filter(n => n === l).length},}.*)`).join('')
+  // With letter counts
+  yellow = [...new Set(appearsInWord)].map(a => `(?=.*${a}{${appearsInWord.filter(n => n === a).length},}.*)`).join('')
 
   if (doesntAppear.length) {
     gray = `(?=\\b[^\\W${doesntAppear.join('')}]+\\b)`
