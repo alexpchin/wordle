@@ -2,7 +2,7 @@ import chalk from "chalk";
 import readline from "readline";
 import fs from "fs";
 
-const storeGreen = (i, l, correctGuess, doesntAppear) => {
+const storeGreen = (i, l, correctGuess) => {
   correctGuess[i] = l;
 };
 
@@ -49,7 +49,7 @@ const storeYellow = (
   // }
 };
 
-const storeGray = (l, doesntAppear, appearsInWord, correctGuess) => {
+const storeGray = (l, doesntAppear) => {
   doesntAppear.push(l);
 };
 
@@ -328,6 +328,13 @@ const benchmark = async () => {
     const { count } = await automatic(solution);
     benchmarks[count] = benchmarks[count] ? benchmarks[count] + 1 : 1;
   }
+  // Work out %
+  for (const key in benchmarks) {
+    benchmarks[key] = `${(
+      (benchmarks[key] / solutionWords.length) *
+      100
+    ).toFixed(2)}%`;
+  }
   console.log(JSON.stringify(benchmarks, 0, 2));
 };
 
@@ -335,6 +342,7 @@ const benchmark = async () => {
  * Main menu function to run the program
  */
 const main = async () => {
+  console.clear();
   const mode = await ask(
     "What mode do you want to use?\n1. Interactive\n2. Automatic\n3. Benchmark Solutions"
   );
