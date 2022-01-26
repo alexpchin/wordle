@@ -2,7 +2,7 @@ import chalk from "chalk";
 import readline from "readline";
 import fs from "fs";
 
-const storeGreen = (i, l, correctGuess) => {
+const storeGreen = (i, l, correctGuess, doesntAppear) => {
   correctGuess[i] = l;
 };
 
@@ -12,41 +12,44 @@ const storeYellow = (
   appearsInWord,
   wrongPosition,
   duplicateLetters,
-  wordle
+  wordle, // We don't know wordle here
+  guess
 ) => {
+  // const letters = guess.split("");
   // If the letter is not the first example in the guess
   // const numberOfOccurancesInGuess = letters
   //   .map((x, y) => (x === l ? y : undefined))
   //   .filter(Boolean);
-  const numberOfOccurancesInWordle = wordle
-    .split("")
-    .filter((w) => w === l).length;
-  const firstGuessOfLetter = !duplicateLetters[l];
-  const duplicateGuessOfLetter = duplicateLetters[l] < i;
-  const duplicatePresentInWordle = numberOfOccurancesInWordle >= i + 1;
+  // const numberOfOccurancesInWordle = wordle
+  //   .split("")
+  //   .filter((w) => w === l).length;
+  // const firstGuessOfLetter = !duplicateLetters[l];
+  // const duplicateGuessOfLetter = duplicateLetters[l] < i;
+  // // const duplicatePresentInWordle = numberOfOccurancesInWordle >= i + 1;
+  // const duplicatePresentInWordle = numberOfOccurancesInGuess >= i + 1;
 
-  if (
-    firstGuessOfLetter ||
-    (duplicateGuessOfLetter && duplicatePresentInWordle)
-  ) {
-    // Save position of last guessed duplicate letter
-    duplicateLetters[l] = i;
+  // if (
+  //   firstGuessOfLetter ||
+  //   (duplicateGuessOfLetter && duplicatePresentInWordle)
+  // ) {
+  //   // Save position of last guessed duplicate letter
+  //   duplicateLetters[l] = i;
 
-    const numberOfTimesGuessed = appearsInWord.filter((a) => a === l).length;
-    if (numberOfOccurancesInWordle > numberOfTimesGuessed) {
-      appearsInWord.push(l);
-    }
+  //   const numberOfTimesGuessed = appearsInWord.filter((a) => a === l).length;
+  // if (numberOfOccurancesInWordle > numberOfTimesGuessed) {
+  appearsInWord.push(l);
+  // }
 
-    // Even though the letter is present, it's specifically not here
-    if (wrongPosition[i]) {
-      wrongPosition[i] += l;
-    } else {
-      wrongPosition[i] = l;
-    }
+  // Even though the letter is present, it's specifically not here
+  if (wrongPosition[i]) {
+    wrongPosition[i] += l;
+  } else {
+    wrongPosition[i] = l;
   }
+  // }
 };
 
-const storeGray = (l, doesntAppear) => {
+const storeGray = (l, doesntAppear, appearsInWord, correctGuess) => {
   doesntAppear.push(l);
 };
 
@@ -69,9 +72,9 @@ const createResults = (wordle, guess) => {
 
 const prettyPrintResults = (results, guess) => {
   let prettyResults = "";
-  results = results.split("");
+  const resultsLetters = results.split("");
   guess = guess.split("");
-  for (const [i, result] of results.entries()) {
+  for (const [i, result] of resultsLetters.entries()) {
     switch (result) {
       case "G":
         prettyResults += chalk.bgGreen(guess[i]);
@@ -125,8 +128,14 @@ const pick = () => {
   return solutionWords[Math.floor(Math.random() * solutionWords.length)];
 };
 
-const makeGuess = (previousGuess = "ADIEU", wordlist) => {
-  if (!previousGuess) return previousGuess;
+function mutationFilter(arr, cb) {
+  for (let l = arr.length - 1; l >= 0; l -= 1) {
+    if (!cb(arr[l])) arr.splice(l, 1);
+  }
+}
+
+const makeGuess = (previousGuess, wordlist) => {
+  if (!previousGuess) return "ADIEU";
   // Improvements could be made here rather than random
   return wordlist[Math.floor(Math.random() * wordlist.length)];
 };
@@ -141,8 +150,8 @@ const recordResults = (
   doesntAppear,
   duplicateLetters
 ) => {
-  results = results.split("");
-  for (const [i, result] of results.entries()) {
+  const resultsLetters = results.split("");
+  for (const [i, result] of resultsLetters.entries()) {
     const letter = guess[i];
     switch (result) {
       case "G":
@@ -155,14 +164,20 @@ const recordResults = (
           appearsInWord,
           wrongPosition,
           duplicateLetters,
-          wordle
+          wordle, // We don't know this for interactive
+          guess
         );
         break;
       case " ":
-        storeGray(letter, doesntAppear);
+        storeGray(letter, doesntAppear, appearsInWord, correctGuess);
         break;
     }
   }
+
+  // Remove all letters from doesn't appear that also appear in correctGuess or appearsInWord, must mutate existing array
+  const condition = (d) =>
+    !correctGuess.includes(d) && !appearsInWord.includes(d);
+  mutationFilter(doesntAppear, condition);
 };
 
 const ask = (query) => {
@@ -179,9 +194,7 @@ const ask = (query) => {
   );
 };
 
-const interactive = async () => {
-  let guess;
-  let regex;
+const interactive = async (regex, guess, results) => {
   let wordle;
   let count = 1;
   let wordlist = fs.readFileSync("word-list-wordle.txt", "utf8");
@@ -191,12 +204,39 @@ const interactive = async () => {
   const wrongPosition = new Array(5);
   const doesntAppear = [];
   let duplicateLetters = {};
+
+  // When adding existing
+  // To refactor
+  if (results) {
+    recordResults(
+      wordle,
+      guess,
+      results,
+      correctGuess,
+      appearsInWord,
+      wrongPosition,
+      doesntAppear,
+      duplicateLetters
+    );
+    regex = buildRegex(
+      correctGuess,
+      appearsInWord,
+      wrongPosition,
+      doesntAppear
+    );
+    console.log(`Using regex: ${regex}`);
+    remainingWords = wordlist.match(regex);
+    console.log(`${remainingWords.length} words remaining`);
+    wordlist = remainingWords.join("\n");
+  }
+
   try {
     while (remainingWords.length !== 1) {
+      console.log(`${remainingWords.length} words remaining`);
       guess = makeGuess(guess, remainingWords);
-      console.log(`Guess ${count}: ${guess}`);
+      console.log(`Make guess ${count}: ${guess}`);
       count++;
-      const results = await ask("Enter the results, e.g. G YF ");
+      results = await ask("Enter the results, e.g. G YF ");
       prettyPrintResults(results, guess);
       recordResults(
         wordle,
@@ -214,8 +254,11 @@ const interactive = async () => {
         wrongPosition,
         doesntAppear
       );
+      // console.log(`Using regex: ${regex}`);
       remainingWords = wordlist.match(regex);
       wordlist = remainingWords.join("\n");
+      regex = undefined;
+      results = undefined;
     }
     console.log(`\nCORRECT ANSWER: ${wordlist}\nUsing regex: ${regex}`);
   } catch (e) {
@@ -298,7 +341,11 @@ const main = async () => {
   switch (mode) {
     case "1":
       console.clear();
-      await interactive();
+      const regex = await ask("Enter existing regex");
+      const guess = await ask("Enter existing guess");
+      const results = await ask("Enter existing results");
+      await interactive(regex, guess, results);
+      break;
     case "2":
       console.clear();
       await automatic();
