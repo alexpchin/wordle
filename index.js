@@ -6,19 +6,83 @@ const makeRandomGuess = (wordlist) => {
   return wordlist[Math.floor(Math.random() * wordlist.length)];
 };
 
+// letterFrequencies("HELLO"); // => { H: 1, E: 1, L: 2, O: 1 }
+// const letterFrequencies = (word) => {
+//   return word.split("").reduce((total, letter) => {
+//     total[letter] ? total[letter]++ : (total[letter] = 1);
+//     return total;
+//   }, {});
+// };
+
+const makeOptimalGuessWithLetterFrequencies = (previousGuesses, wordlist) => {
+  const wordlistWithoutPreviousGuesses = wordlist.filter(
+    (word) => !previousGuesses.includes(word)
+  );
+
+  const frequencies = {
+    A: 8.167,
+    B: 1.492,
+    C: 2.782,
+    D: 4.253,
+    E: 12.702,
+    F: 2.228,
+    G: 2.015,
+    H: 6.094,
+    I: 6.966,
+    J: 0.153,
+    K: 0.772,
+    L: 4.025,
+    M: 2.406,
+    N: 6.749,
+    O: 7.507,
+    P: 1.929,
+    Q: 0.095,
+    R: 5.987,
+    S: 6.327,
+    T: 9.056,
+    U: 2.758,
+    V: 0.978,
+    W: 2.36,
+    X: 0.15,
+    Y: 1.974,
+    Z: 0.074,
+  };
+
+  const sortedWordlist = wordlistWithoutPreviousGuesses
+    .map((word) => {
+      return {
+        word,
+        frequency: word.split("").reduce((sum, letter) => {
+          sum += frequencies[letter];
+          return sum;
+        }, 0),
+      };
+    })
+    // Sort by highest frequency score
+    .sort((a, b) => b.frequency - a.frequency);
+
+  // console.log("scoredWordlist", scoredWordlist);
+
+  return sortedWordlist[0].word;
+};
+
 /**
  * MinMax? function to take optimise for the guesses
  */
-const makeOptimalGuess = (guessResults, wordlist) => {
-  let minMaxRemainingWords = wordlist.length;
+const makeOptimalGuessMinMax = (previousGuesses, wordlist) => {
+  const wordlistWithoutPreviousGuesses = wordlist.filter(
+    (word) => !previousGuesses.includes(word)
+  );
+
+  let minMaxRemainingWords = wordlistWithoutPreviousGuesses.length;
   let minMaxWord = "";
   const guesses = [];
 
   // Let's say the word is...
-  for (let i = 0; i < wordlist.length; i++) {
-    const wordle = wordlist[i];
+  for (let i = 0; i < wordlistWithoutPreviousGuesses.length; i++) {
+    const wordle = wordlistWithoutPreviousGuesses[i];
     // console.log({
-    //   percent: i / wordlist.length,
+    //   percent: i / wordlistWithoutPreviousGuesses.length,
     //   wordle,
     //   minMaxWord,
     //   minMaxRemainingWords,
@@ -27,12 +91,16 @@ const makeOptimalGuess = (guessResults, wordlist) => {
     const remainingPossibilities = [];
 
     // And we decide to guess...
-    for (const guess of wordlist) {
+    for (const guess of wordlistWithoutPreviousGuesses) {
       // Create possible results for this possibility
       const results = createResults(wordle, guess);
 
       // Create potential remaining words
-      const newPossibilities = filterWords(wordlist, guess, results);
+      const newPossibilities = filterWords(
+        wordlistWithoutPreviousGuesses,
+        guess,
+        results
+      );
       // console.log("remainingPossibilities", newPossibilities.length);
 
       // Store the count of the number of words that this choice elimates
@@ -40,7 +108,10 @@ const makeOptimalGuess = (guessResults, wordlist) => {
 
       // ?? This will always be smaller?
       // Save time if we already know we won't win the minimax game
-      if (newPossibilities.length > minMaxRemainingWords) break;
+      if (newPossibilities.length > minMaxRemainingWords) {
+        // console.log("BREAKING...");
+        break;
+      }
     }
 
     // What is the smallest elimination word, i.e. most results
@@ -50,6 +121,8 @@ const makeOptimalGuess = (guessResults, wordlist) => {
     if (maxRemainingPossibilities <= minMaxRemainingWords) {
       minMaxWord = wordle;
       minMaxRemainingWords = maxRemainingPossibilities;
+    } else {
+      // console.log("HERE...");
     }
     guesses.push({
       wordle,
@@ -57,13 +130,12 @@ const makeOptimalGuess = (guessResults, wordlist) => {
     });
   }
 
-  // GREEDY vs AVERAGE?
-
   // Pick the guess that "minimizes the maximum number of remaining possibilities" (Knuth)
   const optimalGuesses = guesses.filter(
     (guess) => guess.maxRemainingPossibilities <= minMaxRemainingWords
   );
-  // console.log("optimalGuesses", optimalGuesses);
+  console.log("guesses", guesses);
+  console.log("optimalGuesses", optimalGuesses);
 
   const { wordle, maxRemainingPossibilities } = optimalGuesses[0];
   return wordle;
@@ -71,6 +143,7 @@ const makeOptimalGuess = (guessResults, wordlist) => {
 
 /**
  * Create a representation of the Colored Tiles
+ * only used by computer when wordle is known
  */
 const createResults = (wordle, guess) => {
   // console.log("createResults wordle:", wordle);
@@ -131,19 +204,6 @@ const pick = () => {
   return solutionWords[Math.floor(Math.random() * solutionWords.length)];
 };
 
-const makeGuess = (previousGuesses, wordlist) => {
-  // console.log("makeGuess wordlist", wordlist);
-  let guess;
-  if (!previousGuesses.length) {
-    guess = "ADIEU";
-  } else {
-    guess = makeRandomGuess(wordlist);
-    // guess = makeOptimalGuess(previousGuesses, wordlist);
-  }
-  previousGuesses.push(guess);
-  return guess;
-};
-
 // Returns remaining words
 const filterWords = (remainingWords, guess, results) => {
   // console.log(`Filtering ${remainingWords.length} words`);
@@ -185,12 +245,14 @@ const filterWords = (remainingWords, guess, results) => {
   let yellow = "";
   let gray = "";
 
+  // Can combine...
   [...Array(5)].forEach((_, i) => {
     green += correctGuess[i] ? correctGuess[i] : ".";
     yellowPlace += wrongPosition[i] ? `[^${wrongPosition[i]}]` : ".";
   });
 
   // Without letter counts
+  // console.log("appearsInWord", appearsInWord);
   yellow = [...new Set(appearsInWord)].map((a) => `(?=.*${a})`).join("");
 
   // With letter counts
@@ -208,6 +270,7 @@ const filterWords = (remainingWords, guess, results) => {
   );
   // console.log("Using regex", regex);
 
+  // TO CHECK
   return remainingWords.filter((word) => word.match(regex));
 };
 
@@ -223,6 +286,20 @@ const ask = (query) => {
       resolve(answer);
     })
   );
+};
+
+const makeGuess = (previousGuesses, wordlist) => {
+  // console.log("makeGuess wordlist", wordlist);
+  let guess;
+  if (!previousGuesses.length) {
+    guess = "ADIEU";
+  } else {
+    // guess = makeRandomGuess(wordlist);
+    guess = makeOptimalGuessMinMax(previousGuesses, wordlist);
+    // guess = makeOptimalGuessWithLetterFrequencies(previousGuesses, wordlist);
+  }
+  previousGuesses.push(guess);
+  return guess;
 };
 
 const interactive = async (regex, guess, results) => {
@@ -266,13 +343,14 @@ const automatic = async (solution, log = true) => {
     while (!correct) {
       const guess = makeGuess(guesses, remainingWords);
       // log && console.log("Guessing:", guess);
+      // log && console.log("SOLUTION:", wordle);
       const results = createResults(wordle, guess);
       // log && console.log("remainingWords.length", remainingWords);
       log && prettyPrintResults(results, guess);
       if (results === "GGGGG") break;
       count++;
       remainingWords = filterWords(remainingWords, guess, results);
-      // console.log("autmatic remainingWords", remainingWords);
+      // console.log("automatic remainingWords", remainingWords);
     }
     return {
       count,
@@ -291,11 +369,11 @@ const benchmark = async () => {
   const solutionWords = solutions.split("\n");
   const benchmarks = {};
   for (const [i, solution] of solutionWords.entries()) {
-    // console.log({
-    //   percent: i / solutionWords.length,
-    //   progress: `${i} / ${solutionWords.length}`,
-    //   solution,
-    // });
+    console.log({
+      percent: (i / solutionWords.length) * 100,
+      progress: `${i + 1} / ${solutionWords.length}`,
+      solution,
+    });
     const { count } = await automatic(solution, false);
     benchmarks[count] = benchmarks[count] ? benchmarks[count] + 1 : 1;
   }
