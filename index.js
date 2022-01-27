@@ -230,6 +230,7 @@ const interactive = async (regex, guess, results) => {
   let correct = false;
   let wordlist = fs.readFileSync("word-list-wordle.txt", "utf8");
   let remainingWords = wordlist.split("\n");
+  const guesses = []; // CHANGE?
 
   // When adding existing results to test
   // To remove
@@ -240,7 +241,7 @@ const interactive = async (regex, guess, results) => {
   try {
     while (!correct) {
       console.log(`${remainingWords.length} words remaining`);
-      guess = makeGuess(guess, remainingWords);
+      guess = makeGuess(guesses, remainingWords);
       console.log(`Make guess ${count}: ${guess}`);
       results = await ask("Enter the results, e.g. G YF ");
       prettyPrintResults(results, guess);
@@ -258,7 +259,7 @@ const automatic = async (solution, log = true) => {
   let wordle = solution || pick();
   let count = 1;
   let correct = false;
-  const guesses = [];
+  const guesses = []; // CHANGE?
   let wordlist = fs.readFileSync("word-list-wordle.txt", "utf8");
   let remainingWords = wordlist.split("\n");
   try {
