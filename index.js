@@ -242,10 +242,10 @@ const interactive = async (regex, guess, results) => {
       console.log(`${remainingWords.length} words remaining`);
       guess = makeGuess(guess, remainingWords);
       console.log(`Make guess ${count}: ${guess}`);
-      count++;
       results = await ask("Enter the results, e.g. G YF ");
       prettyPrintResults(results, guess);
       if (results === "GGGGG") break;
+      count++;
       remainingWords = filterWords(remainingWords, guess, results);
       results = undefined;
     }
@@ -265,11 +265,11 @@ const automatic = async (solution, log = true) => {
     while (!correct) {
       const guess = makeGuess(guesses, remainingWords);
       // log && console.log("Guessing:", guess);
-      count++;
       const results = createResults(wordle, guess);
       // log && console.log("remainingWords.length", remainingWords);
       log && prettyPrintResults(results, guess);
       if (results === "GGGGG") break;
+      count++;
       remainingWords = filterWords(remainingWords, guess, results);
       // console.log("autmatic remainingWords", remainingWords);
     }
@@ -290,11 +290,11 @@ const benchmark = async () => {
   const solutionWords = solutions.split("\n");
   const benchmarks = {};
   for (const [i, solution] of solutionWords.entries()) {
-    console.log({
-      percent: i / solutionWords.length,
-      progress: `${i} / ${solutionWords.length}`,
-      solution,
-    });
+    // console.log({
+    //   percent: i / solutionWords.length,
+    //   progress: `${i} / ${solutionWords.length}`,
+    //   solution,
+    // });
     const { count } = await automatic(solution, false);
     benchmarks[count] = benchmarks[count] ? benchmarks[count] + 1 : 1;
   }
