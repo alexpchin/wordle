@@ -2,74 +2,108 @@ import chalk from "chalk";
 import readline from "readline";
 import fs from "fs";
 
-const storeGreen = (i, l, correctGuess) => {
-  correctGuess[i] = l;
+const makeRandomGuess = (wordlist) => {
+  return wordlist[Math.floor(Math.random() * wordlist.length)];
 };
 
-const storeYellow = (
-  i,
-  l,
-  appearsInWord,
-  wrongPosition,
-  duplicateLetters,
-  wordle, // We don't know wordle here
-  guess
-) => {
-  // const letters = guess.split("");
-  // If the letter is not the first example in the guess
-  // const numberOfOccurancesInGuess = letters
-  //   .map((x, y) => (x === l ? y : undefined))
-  //   .filter(Boolean);
-  // const numberOfOccurancesInWordle = wordle
-  //   .split("")
-  //   .filter((w) => w === l).length;
-  // const firstGuessOfLetter = !duplicateLetters[l];
-  // const duplicateGuessOfLetter = duplicateLetters[l] < i;
-  // // const duplicatePresentInWordle = numberOfOccurancesInWordle >= i + 1;
-  // const duplicatePresentInWordle = numberOfOccurancesInGuess >= i + 1;
+/**
+ * MinMax? function to take optimise for the guesses
+ */
+const makeOptimalGuess = (guessResults, wordlist) => {
+  let minMaxRemainingWords = wordlist.length;
+  let minMaxWord = "";
+  const guesses = [];
 
-  // if (
-  //   firstGuessOfLetter ||
-  //   (duplicateGuessOfLetter && duplicatePresentInWordle)
-  // ) {
-  //   // Save position of last guessed duplicate letter
-  //   duplicateLetters[l] = i;
+  // Let's say the word is...
+  for (let i = 0; i < wordlist.length; i++) {
+    const wordle = wordlist[i];
+    // console.log({
+    //   percent: i / wordlist.length,
+    //   wordle,
+    //   minMaxWord,
+    //   minMaxRemainingWords,
+    // });
 
-  //   const numberOfTimesGuessed = appearsInWord.filter((a) => a === l).length;
-  // if (numberOfOccurancesInWordle > numberOfTimesGuessed) {
-  appearsInWord.push(l);
-  // }
+    const remainingPossibilities = [];
 
-  // Even though the letter is present, it's specifically not here
-  if (wrongPosition[i]) {
-    wrongPosition[i] += l;
-  } else {
-    wrongPosition[i] = l;
+    // And we decide to guess...
+    for (const guess of wordlist) {
+      // Create possible results for this possibility
+      const results = createResults(wordle, guess);
+
+      // Create potential remaining words
+      const newPossibilities = filterWords(wordlist, guess, results);
+      // console.log("remainingPossibilities", newPossibilities.length);
+
+      // Store the count of the number of words that this choice elimates
+      remainingPossibilities.push(newPossibilities.length);
+
+      // ?? This will always be smaller?
+      // Save time if we already know we won't win the minimax game
+      if (newPossibilities.length > minMaxRemainingWords) break;
+    }
+
+    // What is the smallest elimination word, i.e. most results
+    const maxRemainingPossibilities = Math.max(...remainingPossibilities);
+
+    // ?? Won't this always be true?
+    if (maxRemainingPossibilities <= minMaxRemainingWords) {
+      minMaxWord = wordle;
+      minMaxRemainingWords = maxRemainingPossibilities;
+    }
+    guesses.push({
+      wordle,
+      maxRemainingPossibilities,
+    });
   }
-  // }
+
+  // GREEDY vs AVERAGE?
+
+  // Pick the guess that "minimizes the maximum number of remaining possibilities" (Knuth)
+  const optimalGuesses = guesses.filter(
+    (guess) => guess.maxRemainingPossibilities <= minMaxRemainingWords
+  );
+  // console.log("optimalGuesses", optimalGuesses);
+
+  const { wordle, maxRemainingPossibilities } = optimalGuesses[0];
+  return wordle;
 };
 
-const storeGray = (l, doesntAppear) => {
-  doesntAppear.push(l);
-};
-
+/**
+ * Create a representation of the Colored Tiles
+ */
 const createResults = (wordle, guess) => {
+  // console.log("createResults wordle:", wordle);
+  // console.log("createResults guess:", guess);
   const wordleLetters = wordle.split("");
   const letters = guess.split("");
   let results = "";
+  const lettersGuessed = letters.reduce((obj, l) => {
+    obj[l] = 0;
+    return obj;
+  }, {});
   for (const [i, l] of letters.entries()) {
     if (wordleLetters[i] === letters[i]) {
       results += "G";
     } else if (wordle.includes(l)) {
-      // Needs to handle better here
-      results += "Y";
+      const numberOfLettersInWord = wordleLetters.filter((w) => w === l).length;
+      if (lettersGuessed[l] < numberOfLettersInWord) {
+        results += "Y";
+      } else {
+        results += " ";
+      }
     } else {
       results += " ";
     }
+    lettersGuessed[l] = lettersGuessed[l] ? lettersGuessed[l] + 1 : 1;
   }
+  // console.log("results", results);
   return results;
 };
 
+/**
+ * Print tiles
+ */
 const prettyPrintResults = (results, guess) => {
   let prettyResults = "";
   const resultsLetters = results.split("");
@@ -91,12 +125,61 @@ const prettyPrintResults = (results, guess) => {
   console.log(prettyResults);
 };
 
-const buildRegex = (
-  correctGuess,
-  appearsInWord,
-  wrongPosition,
-  doesntAppear
-) => {
+const pick = () => {
+  const solutions = fs.readFileSync("solutions.txt", "utf8");
+  const solutionWords = solutions.split("\n");
+  return solutionWords[Math.floor(Math.random() * solutionWords.length)];
+};
+
+const makeGuess = (previousGuesses, wordlist) => {
+  // console.log("makeGuess wordlist", wordlist);
+  let guess;
+  if (!previousGuesses.length) {
+    guess = "ADIEU";
+  } else {
+    guess = makeRandomGuess(wordlist);
+    // guess = makeOptimalGuess(previousGuesses, wordlist);
+  }
+  previousGuesses.push(guess);
+  return guess;
+};
+
+// Returns remaining words
+const filterWords = (remainingWords, guess, results) => {
+  // console.log(`Filtering ${remainingWords.length} words`);
+
+  // Should this persist?
+  const correctGuess = new Array(5);
+  const appearsInWord = [];
+  const wrongPosition = new Array(5);
+  const doesntAppear = []; // Doesn't need to
+
+  // Record words
+  const resultsLetters = results.split("");
+  for (const [i, result] of resultsLetters.entries()) {
+    const l = guess[i];
+    switch (result) {
+      case "G":
+        correctGuess[i] = l;
+        break;
+      case "Y":
+        appearsInWord.push(l);
+        // Even though the letter is present, it's specifically not here
+        if (wrongPosition[i]) {
+          wrongPosition[i] += l;
+        } else {
+          wrongPosition[i] = l;
+        }
+        break;
+      case " ":
+        if (!correctGuess.includes(l) && !appearsInWord.includes(l)) {
+          doesntAppear.push(l);
+        }
+        break;
+    }
+  }
+
+  // Build regex
   let green = "";
   let yellowPlace = "";
   let yellow = "";
@@ -119,65 +202,13 @@ const buildRegex = (
     gray = `(?=\\b[^\\W${doesntAppear.join("")}]+\\b)`;
   }
 
-  return new RegExp(`^(?=${green})(?=${yellowPlace})${yellow}${gray}.*`, "gm");
-};
+  const regex = new RegExp(
+    `^(?=${green})(?=${yellowPlace})${yellow}${gray}.*`,
+    "gm"
+  );
+  // console.log("Using regex", regex);
 
-const pick = () => {
-  const solutions = fs.readFileSync("solutions.txt", "utf8");
-  const solutionWords = solutions.split("\n");
-  return solutionWords[Math.floor(Math.random() * solutionWords.length)];
-};
-
-function mutationFilter(arr, cb) {
-  for (let l = arr.length - 1; l >= 0; l -= 1) {
-    if (!cb(arr[l])) arr.splice(l, 1);
-  }
-}
-
-const makeGuess = (previousGuess, wordlist) => {
-  if (!previousGuess) return "ADIEU";
-  // Improvements could be made here rather than random
-  return wordlist[Math.floor(Math.random() * wordlist.length)];
-};
-
-const recordResults = (
-  wordle,
-  guess,
-  results,
-  correctGuess,
-  appearsInWord,
-  wrongPosition,
-  doesntAppear,
-  duplicateLetters
-) => {
-  const resultsLetters = results.split("");
-  for (const [i, result] of resultsLetters.entries()) {
-    const letter = guess[i];
-    switch (result) {
-      case "G":
-        storeGreen(i, letter, correctGuess);
-        break;
-      case "Y":
-        storeYellow(
-          i,
-          letter,
-          appearsInWord,
-          wrongPosition,
-          duplicateLetters,
-          wordle, // We don't know this for interactive
-          guess
-        );
-        break;
-      case " ":
-        storeGray(letter, doesntAppear, appearsInWord, correctGuess);
-        break;
-    }
-  }
-
-  // Remove all letters from doesn't appear that also appear in correctGuess or appearsInWord, must mutate existing array
-  const condition = (d) =>
-    !correctGuess.includes(d) && !appearsInWord.includes(d);
-  mutationFilter(doesntAppear, condition);
+  return remainingWords.filter((word) => word.match(regex));
 };
 
 const ask = (query) => {
@@ -195,124 +226,58 @@ const ask = (query) => {
 };
 
 const interactive = async (regex, guess, results) => {
-  let wordle;
   let count = 1;
+  let correct = false;
   let wordlist = fs.readFileSync("word-list-wordle.txt", "utf8");
   let remainingWords = wordlist.split("\n");
-  const correctGuess = new Array(5);
-  const appearsInWord = [];
-  const wrongPosition = new Array(5);
-  const doesntAppear = [];
-  let duplicateLetters = {};
 
-  // When adding existing
-  // To refactor
+  // When adding existing results to test
+  // To remove
   if (results) {
-    recordResults(
-      wordle,
-      guess,
-      results,
-      correctGuess,
-      appearsInWord,
-      wrongPosition,
-      doesntAppear,
-      duplicateLetters
-    );
-    regex = buildRegex(
-      correctGuess,
-      appearsInWord,
-      wrongPosition,
-      doesntAppear
-    );
-    console.log(`Using regex: ${regex}`);
-    remainingWords = wordlist.match(regex);
-    console.log(`${remainingWords.length} words remaining`);
-    wordlist = remainingWords.join("\n");
+    remainingWords = filterWords(remainingWords, guess, results);
   }
 
   try {
-    while (remainingWords.length !== 1) {
+    while (!correct) {
       console.log(`${remainingWords.length} words remaining`);
       guess = makeGuess(guess, remainingWords);
       console.log(`Make guess ${count}: ${guess}`);
       count++;
       results = await ask("Enter the results, e.g. G YF ");
       prettyPrintResults(results, guess);
-      recordResults(
-        wordle,
-        guess,
-        results,
-        correctGuess,
-        appearsInWord,
-        wrongPosition,
-        doesntAppear,
-        duplicateLetters
-      );
-      regex = buildRegex(
-        correctGuess,
-        appearsInWord,
-        wrongPosition,
-        doesntAppear
-      );
-      // console.log(`Using regex: ${regex}`);
-      remainingWords = wordlist.match(regex);
-      wordlist = remainingWords.join("\n");
-      regex = undefined;
+      if (results === "GGGGG") break;
+      remainingWords = filterWords(remainingWords, guess, results);
       results = undefined;
     }
-    console.log(`\nCORRECT ANSWER: ${wordlist}\nUsing regex: ${regex}`);
   } catch (e) {
-    console.log(`\nCORRECT ANSWER: ${wordle}\nUsing regex: ${regex}`);
     console.log("Error:", e.stack);
   }
 };
 
-const automatic = async (solution) => {
-  let guess;
+const automatic = async (solution, log = true) => {
   let wordle = solution || pick();
-  let regex;
   let count = 1;
+  let correct = false;
+  const guesses = [];
   let wordlist = fs.readFileSync("word-list-wordle.txt", "utf8");
   let remainingWords = wordlist.split("\n");
-  const correctGuess = new Array(5);
-  const appearsInWord = [];
-  const wrongPosition = new Array(5);
-  const doesntAppear = []; // Doesn't need to be stored each loop but interesting
-  let duplicateLetters = {};
   try {
-    while (remainingWords.length !== 1) {
-      guess = makeGuess(guess, remainingWords);
+    while (!correct) {
+      const guess = makeGuess(guesses, remainingWords);
+      // log && console.log("Guessing:", guess);
       count++;
       const results = createResults(wordle, guess);
-      prettyPrintResults(results, guess);
-      recordResults(
-        wordle,
-        guess,
-        results,
-        correctGuess,
-        appearsInWord,
-        wrongPosition,
-        doesntAppear,
-        duplicateLetters
-      );
-      regex = buildRegex(
-        correctGuess,
-        appearsInWord,
-        wrongPosition,
-        doesntAppear
-      );
-      remainingWords = wordlist.match(regex);
-      wordlist = remainingWords.join("\n");
+      // log && console.log("remainingWords.length", remainingWords);
+      log && prettyPrintResults(results, guess);
+      if (results === "GGGGG") break;
+      remainingWords = filterWords(remainingWords, guess, results);
+      // console.log("autmatic remainingWords", remainingWords);
     }
-    const results = createResults(wordle, wordlist);
-    prettyPrintResults(results, wordlist);
-    console.log(`\nCORRECT ANSWER: ${wordlist}\nUsing regex: ${regex}`);
     return {
       count,
       wordle,
     };
   } catch (e) {
-    console.log(`\nCORRECT ANSWER: ${wordle}\nUsing regex: ${regex}`);
     console.log("Error:", e.stack);
   }
 };
@@ -324,8 +289,13 @@ const benchmark = async () => {
   let solutions = fs.readFileSync("solutions.txt", "utf8");
   const solutionWords = solutions.split("\n");
   const benchmarks = {};
-  for (const solution of solutionWords) {
-    const { count } = await automatic(solution);
+  for (const [i, solution] of solutionWords.entries()) {
+    console.log({
+      percent: i / solutionWords.length,
+      progress: `${i} / ${solutionWords.length}`,
+      solution,
+    });
+    const { count } = await automatic(solution, false);
     benchmarks[count] = benchmarks[count] ? benchmarks[count] + 1 : 1;
   }
   // Work out %
@@ -344,7 +314,7 @@ const benchmark = async () => {
 const main = async () => {
   console.clear();
   const mode = await ask(
-    "What mode do you want to use?\n1. Interactive\n2. Automatic\n3. Benchmark Solutions"
+    "What mode do you want to use?\n\n1. Interactive\n2. Automatic\n3. Benchmark Solutions\n\n"
   );
   switch (mode) {
     case "1":
