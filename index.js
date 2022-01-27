@@ -6,19 +6,19 @@ const makeRandomGuess = (wordlist) => {
   return wordlist[Math.floor(Math.random() * wordlist.length)];
 };
 
-// letterFrequencies("HELLO"); // => { H: 1, E: 1, L: 2, O: 1 }
-// const letterFrequencies = (word) => {
-//   return word.split("").reduce((total, letter) => {
-//     total[letter] ? total[letter]++ : (total[letter] = 1);
-//     return total;
-//   }, {});
-// };
+const letterFrequencies = (word) => {
+  return word.split("").reduce((total, letter) => {
+    total[letter] ? total[letter]++ : (total[letter] = 1);
+    return total;
+  }, {});
+};
 
 const makeOptimalGuessWithLetterFrequencies = (previousGuesses, wordlist) => {
   const wordlistWithoutPreviousGuesses = wordlist.filter(
     (word) => !previousGuesses.includes(word)
   );
 
+  // This is frequencies of all words
   const frequencies = {
     A: 8.167,
     B: 1.492,
@@ -48,6 +48,18 @@ const makeOptimalGuessWithLetterFrequencies = (previousGuesses, wordlist) => {
     Z: 0.074,
   };
 
+  // Calculate dynamic frequencies in remaining list
+  // const frequencies = wordlistWithoutPreviousGuesses.reduce(
+  //   (frequencies, word) => {
+  //     word.split("").forEach((letter) => {
+  //       frequencies[letter] = frequencies[letter] ? frequencies[letter] + 1 : 1;
+  //     });
+  //     return frequencies;
+  //   },
+  //   {}
+  // );
+  // console.log("frequencies", frequencies);
+
   const sortedWordlist = wordlistWithoutPreviousGuesses
     .map((word) => {
       return {
@@ -60,8 +72,7 @@ const makeOptimalGuessWithLetterFrequencies = (previousGuesses, wordlist) => {
     })
     // Sort by highest frequency score
     .sort((a, b) => b.frequency - a.frequency);
-
-  // console.log("scoredWordlist", scoredWordlist);
+  // console.log("sortedWordlist", sortedWordlist);
 
   return sortedWordlist[0].word;
 };
@@ -204,75 +215,188 @@ const pick = () => {
   return solutionWords[Math.floor(Math.random() * solutionWords.length)];
 };
 
-// Returns remaining words
-const filterWords = (remainingWords, guess, results) => {
-  // console.log(`Filtering ${remainingWords.length} words`);
+const isGreen = (t) => t === "G";
 
-  // Should this persist?
-  const correctGuess = new Array(5);
-  const appearsInWord = [];
-  const wrongPosition = new Array(5);
-  const doesntAppear = []; // Doesn't need to
+const isGray = (t) => t === " ";
 
-  // Record words
-  const resultsLetters = results.split("");
-  for (const [i, result] of resultsLetters.entries()) {
-    const l = guess[i];
-    switch (result) {
-      case "G":
-        correctGuess[i] = l;
-        break;
-      case "Y":
-        appearsInWord.push(l);
-        // Even though the letter is present, it's specifically not here
-        if (wrongPosition[i]) {
-          wrongPosition[i] += l;
-        } else {
-          wrongPosition[i] = l;
-        }
-        break;
-      case " ":
-        if (!correctGuess.includes(l) && !appearsInWord.includes(l)) {
-          doesntAppear.push(l);
-        }
-        break;
-    }
-  }
+const isYellow = (t) => t === "Y";
 
-  // Build regex
-  let green = "";
-  let yellowPlace = "";
-  let yellow = "";
-  let gray = "";
-
-  // Can combine...
-  [...Array(5)].forEach((_, i) => {
-    green += correctGuess[i] ? correctGuess[i] : ".";
-    yellowPlace += wrongPosition[i] ? `[^${wrongPosition[i]}]` : ".";
-  });
-
-  // Without letter counts
-  // console.log("appearsInWord", appearsInWord);
-  yellow = [...new Set(appearsInWord)].map((a) => `(?=.*${a})`).join("");
-
-  // With letter counts
-  // yellow = [...new Set(appearsInWord)]
-  //   .map((a) => `(?=.*${a}{${appearsInWord.filter((n) => n === a).length},}.*)`)
-  //   .join("");
-
-  if (doesntAppear.length) {
-    gray = `(?=\\b[^\\W${doesntAppear.join("")}]+\\b)`;
-  }
-
-  const regex = new RegExp(
-    `^(?=${green})(?=${yellowPlace})${yellow}${gray}.*`,
-    "gm"
+/**
+ * Filter Green using regex (?=..A.T).*
+ */
+const filterGreen = (guess, results) => {
+  if (!results.includes("G")) return "(?=.....)"; // Could be ""
+  const regexStr = results.split("").reduce(
+    (str, result, index) => {
+      if (isGreen(result)) {
+        str += `${guess[index]}`;
+      } else {
+        str += ".";
+      }
+      return str;
+    },
+    "",
+    0
   );
-  // console.log("Using regex", regex);
-
-  // TO CHECK
-  return remainingWords.filter((word) => word.match(regex));
+  return `(?=${regexStr})`;
 };
+
+/**
+ * Filter Green using regex (?=..[^A]..).*
+ */
+const filterYellowPosition = (guess, results) => {
+  if (!results.includes("Y")) return "(?=.....)"; // Could be ""
+  const regexStr = results.split("").reduce(
+    (str, result, index) => {
+      if (isYellow(result)) {
+        str += `[^${guess[index]}]`;
+      } else {
+        str += ".";
+      }
+      return str;
+    },
+    "",
+    0
+  );
+  return `(?=${regexStr})`;
+};
+
+/**
+ * Filter Yellow using regex (?=.*Y).*
+ */
+const filterYellow = (guess, results) => {
+  if (!results.includes("Y")) return "";
+  return (
+    results
+      .split("")
+      .reduce(
+        (array, result, index) => {
+          if (isYellow(result)) {
+            array.push(guess[index]);
+          }
+          return array;
+        },
+        [],
+        0
+      )
+      // Uniq the array
+      .filter((value, index, self) => self.indexOf(value) === index)
+      .map((letter) => `(?=.*${letter})`)
+      .join("")
+  );
+};
+
+const sameLetterIsAlsoGreen = (results, guess, letter) =>
+  results.split("").some((r, i) => isGreen(r) && guess[i] === letter);
+
+const sameLetterIsAlsoYellow = (results, guess, letter) =>
+  results.split("").some((r, i) => isYellow(r) && guess[i] === letter);
+
+/**
+ * Filter Gray using regex (?=\\b[^\\WABC]+\\b).*
+ */
+const filterGray = (guess, results) => {
+  if (!results.includes(" ")) return "";
+  const regexStr = results
+    .split("")
+    .reduce(
+      (array, result, index) => {
+        if (
+          isGray(result) &&
+          !sameLetterIsAlsoGreen(results, guess, guess[index]) &&
+          !sameLetterIsAlsoYellow(results, guess, guess[index])
+        ) {
+          array.push(guess[index]);
+        }
+        return array;
+      },
+      [],
+      0
+    )
+    .join("");
+  if (!regexStr) return "";
+  return `(?=\\b[^\\W${regexStr}]+\\b)`;
+};
+
+const filterWords = (remainingWords, guess, results) => {
+  const words = remainingWords.join("\n");
+  const regexStr =
+    filterGreen(guess, results) +
+    filterYellowPosition(guess, results) +
+    filterYellow(guess, results) +
+    filterGray(guess, results);
+
+  const regex = new RegExp(`${regexStr}.*`, "gm");
+  return words.match(regex);
+};
+
+// Returns remaining words
+// const filterWordsRegexLong = (remainingWords, guess, results) => {
+//   // console.log(`Filtering ${remainingWords.length} words`);
+
+//   // Should this persist? It's easier to debug if it does!
+//   const correctGuess = new Array(5);
+//   const appearsInWord = [];
+//   const wrongPosition = new Array(5);
+//   const doesntAppear = []; // Doesn't need to
+
+//   // Record words
+//   const resultsLetters = results.split("");
+//   for (const [i, result] of resultsLetters.entries()) {
+//     const l = guess[i];
+//     switch (result) {
+//       case "G":
+//         correctGuess[i] = l;
+//         break;
+//       case "Y":
+//         appearsInWord.push(l);
+//         // Even though the letter is present, it's specifically not here
+//         if (wrongPosition[i]) {
+//           wrongPosition[i] += l;
+//         } else {
+//           wrongPosition[i] = l;
+//         }
+//         break;
+//       case " ":
+//         if (!correctGuess.includes(l) && !appearsInWord.includes(l)) {
+//           doesntAppear.push(l);
+//         }
+//         break;
+//     }
+//   }
+
+//   // Build regex
+//   let green = "";
+//   let yellowPlace = "";
+//   let yellow = "";
+//   let gray = "";
+
+//   // Can combine...
+//   [...Array(5)].forEach((_, i) => {
+//     green += correctGuess[i] ? correctGuess[i] : ".";
+//     yellowPlace += wrongPosition[i] ? `[^${wrongPosition[i]}]` : ".";
+//   });
+
+//   // Without letter counts
+//   // console.log("appearsInWord", appearsInWord);
+//   yellow = [...new Set(appearsInWord)].map((a) => `(?=.*${a})`).join("");
+
+//   // With letter counts
+//   // yellow = [...new Set(appearsInWord)]
+//   //   .map((a) => `(?=.*${a}{${appearsInWord.filter((n) => n === a).length},}.*)`)
+//   //   .join("");
+
+//   if (doesntAppear.length) {
+//     gray = `(?=\\b[^\\W${doesntAppear.join("")}]+\\b)`;
+//   }
+
+//   const regex = new RegExp(
+//     `^(?=${green})(?=${yellowPlace})${yellow}${gray}.*`,
+//     "gm"
+//   );
+//   console.log("longRegex", regex);
+//   return remainingWords.filter((word) => word.match(regex));
+// };
 
 const ask = (query) => {
   const i = readline.createInterface({
@@ -295,8 +419,8 @@ const makeGuess = (previousGuesses, wordlist) => {
     guess = "ADIEU";
   } else {
     // guess = makeRandomGuess(wordlist);
-    guess = makeOptimalGuessMinMax(previousGuesses, wordlist);
-    // guess = makeOptimalGuessWithLetterFrequencies(previousGuesses, wordlist);
+    // guess = makeOptimalGuessMinMax(previousGuesses, wordlist);
+    guess = makeOptimalGuessWithLetterFrequencies(previousGuesses, wordlist);
   }
   previousGuesses.push(guess);
   return guess;
@@ -350,7 +474,6 @@ const automatic = async (solution, log = true) => {
       if (results === "GGGGG") break;
       count++;
       remainingWords = filterWords(remainingWords, guess, results);
-      // console.log("automatic remainingWords", remainingWords);
     }
     return {
       count,
