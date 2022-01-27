@@ -233,11 +233,7 @@ const filterGreen = (guess, results) => {
   if (!results.includes(GREEN)) return "";
   const regexStr = results.split("").reduce(
     (str, result, index) => {
-      if (isGreen(result)) {
-        str += `${guess[index]}`;
-      } else {
-        str += ".";
-      }
+      str += isGreen(result) ? `${guess[index]}` : ".";
       return str;
     },
     "",
@@ -253,11 +249,7 @@ const filterYellowPosition = (guess, results) => {
   if (!results.includes(YELLOW)) return "";
   const regexStr = results.split("").reduce(
     (str, result, index) => {
-      if (isYellow(result)) {
-        str += `[^${guess[index]}]`;
-      } else {
-        str += ".";
-      }
+      str += isYellow(result) ? `[^${guess[index]}]` : ".";
       return str;
     },
     "",
