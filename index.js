@@ -75,10 +75,10 @@ const makeOptimalGuessWithLetterFrequencies = (previousGuesses, wordlist) => {
       };
     })
     // Sort by highest frequency score
-    .sort((a, b) => b.frequency - a.frequency);
-  // console.log("sortedWordlist", sortedWordlist);
+    .sort((a, b) => b.frequency - a.frequency)
+    .map((obj) => obj.word);
 
-  return sortedWordlist[0].word;
+  return sortedWordlist[0];
 };
 
 /**
@@ -132,13 +132,11 @@ const makeOptimalGuessMinMax = (previousGuesses, wordlist) => {
     // What is the smallest elimination word, i.e. most results
     const maxRemainingPossibilities = Math.max(...remainingPossibilities);
 
-    // ?? Won't this always be true?
     if (maxRemainingPossibilities <= minMaxRemainingWords) {
       minMaxWord = wordle;
       minMaxRemainingWords = maxRemainingPossibilities;
-    } else {
-      // console.log("HERE...");
     }
+
     guesses.push({
       wordle,
       maxRemainingPossibilities,
