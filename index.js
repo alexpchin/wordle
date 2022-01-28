@@ -601,7 +601,7 @@ const main = async () => {
   switch (mode) {
     case "1":
       console.clear();
-      await interactive(regex, guess, results);
+      await interactive();
       break;
     case "2":
       console.clear();
