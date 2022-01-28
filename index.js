@@ -7,6 +7,9 @@ const YELLOW = "Y";
 const GRAY = " ";
 const COLORS = [GREEN, YELLOW, GRAY];
 
+/**
+ * Filter the word list based on all previous criteria
+ */
 const matchesFilters = (wordList, filters) => {
   // filters - [ { colour: 'G', position: 4, letter: 'F' } ]
   return wordList.filter((word) => {
@@ -36,6 +39,9 @@ const matchesFilters = (wordList, filters) => {
   });
 };
 
+/**
+ * Recursively create probability trees
+ */
 const calculateLetterColor = (wordList, letter, position, colour) => {
   const matchingWords = matchesFilters(wordList, [
     // This creates an array of objects with these keys
@@ -47,6 +53,9 @@ const calculateLetterColor = (wordList, letter, position, colour) => {
   };
 };
 
+/**
+ * Recursively create probability trees
+ */
 const createDecisionTreeObject = (word, obj, depth) => {
   // Recursively create decision tree structure
   if (depth > 4) {
@@ -72,6 +81,9 @@ const createDecisionTreeObject = (word, obj, depth) => {
   }
 };
 
+/**
+ * Recursively create probability trees
+ */
 const fillInObject = (word, originalList) => {
   let depth = 0;
   let composedObj = { list: originalList, p: 1 };
@@ -80,6 +92,9 @@ const fillInObject = (word, originalList) => {
   return composedObj;
 };
 
+/**
+ * Recursively go through those trees and do the SUMPRODUCT() of all the branches
+ **/
 const calculateP = (arr, obj, p, depth) => {
   COLORS.forEach((colour) => {
     if (obj[colour] && obj[colour].list.length > 0) {
@@ -94,6 +109,9 @@ const calculateP = (arr, obj, p, depth) => {
   });
 };
 
+/**
+ * Recursively go through those trees and do the SUMPRODUCT() of all the branches
+ **/
 const calculateWordScore = (obj, word) => {
   // Go through each branch in tree to multiply probabilities
   // Square each probability and add to array
