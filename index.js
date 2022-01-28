@@ -38,6 +38,7 @@ const matchesFilters = (wordList, filters) => {
 
 const calculateLetterColor = (wordList, letter, position, colour) => {
   const matchingWords = matchesFilters(wordList, [
+    // This creates an array of objects with these keys
     { colour, position, letter },
   ]);
   return {
@@ -56,9 +57,9 @@ const createDecisionTreeObject = (word, obj, depth) => {
       if (!obj[colour] && obj.list.length > 0) {
         obj[colour] = calculateLetterColor(
           obj.list,
-          word[depth],
-          depth,
-          colour
+          word[depth], // letter
+          depth, // position
+          colour // color
         );
       }
     });
@@ -109,9 +110,7 @@ const calculate = (filters, mode, fullList) => {
   const remainingWords = matchesFilters(fullList, [...filters]);
 
   // These are always the same regardless of mode?
-  // console.log("remainingWords", remainingWords.length);
-  // console.log("fullList", fullList.length);
-
+  // TODO: improve!
   let usedList = mode === "hard" ? remainingWords : fullList;
 
   let minScore = 1;
@@ -158,10 +157,6 @@ const makeGuessWithTree = (previousGuesses, wordlist) => {
     word: minWord,
     list: remainingWords,
   } = calculate(filters, mode, wordlistWithoutPreviousGuesses);
-  // console.log("minScore", minScore);
-  // console.log("minWord", minWord);
-  // console.log("remainingWords", remainingWords);
-
   return minWord;
 };
 
