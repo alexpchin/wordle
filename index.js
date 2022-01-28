@@ -5,12 +5,164 @@ import fs from "fs";
 const GREEN = "G";
 const YELLOW = "Y";
 const GRAY = " ";
+const COLORS = [GREEN, YELLOW, GRAY];
 
-const letterFrequencies = (word) => {
-  return word.split("").reduce((total, letter) => {
-    total[letter] ? total[letter]++ : (total[letter] = 1);
-    return total;
-  }, {});
+const matchesFilters = (wordList, filters) => {
+  // filters - [ { colour: 'G', position: 4, letter: 'F' } ]
+  return wordList.filter((word) => {
+    let match = true;
+    for (let i = 0; i < filters.length; i += 1) {
+      const { colour, position, letter } = filters[i];
+      if (colour === GRAY) {
+        if (word.includes(letter)) {
+          match = false;
+          break;
+        }
+      }
+      if (colour === GREEN) {
+        if (word[position] !== letter) {
+          match = false;
+          break;
+        }
+      }
+      if (colour === YELLOW) {
+        if (!word.includes(letter) || word[position] === letter) {
+          match = false;
+          break;
+        }
+      }
+    }
+    return match;
+  });
+};
+
+const calculateLetterColor = (wordList, letter, position, colour) => {
+  const matchingWords = matchesFilters(wordList, [
+    { colour, position, letter },
+  ]);
+  return {
+    p: (matchingWords.length * 1.0) / wordList.length,
+    list: matchingWords,
+  };
+};
+
+const createDecisionTreeObject = (word, obj, depth) => {
+  // Recursively create decision tree structure
+  if (depth > 4) {
+    return obj;
+  } else {
+    // For each colour, add probabilities and new lists
+    COLORS.forEach((colour) => {
+      if (!obj[colour] && obj.list.length > 0) {
+        obj[colour] = calculateLetterColor(
+          obj.list,
+          word[depth],
+          depth,
+          colour
+        );
+      }
+    });
+    const newDepth = depth + 1;
+    COLORS.forEach((colour) => {
+      if (obj.list.length > 0) {
+        createDecisionTreeObject(word, obj[colour], newDepth);
+      }
+    });
+  }
+};
+
+const fillInObject = (word, originalList) => {
+  let depth = 0;
+  let composedObj = { list: originalList, p: 1 };
+  createDecisionTreeObject(word, composedObj, depth);
+  // console.log("composedObj", composedObj);
+  return composedObj;
+};
+
+const calculateP = (arr, obj, p, depth) => {
+  COLORS.forEach((colour) => {
+    if (obj[colour] && obj[colour].list.length > 0) {
+      // console.log({ p: obj.p * p, depth });
+
+      if (depth === 4) {
+        arr.push(obj[colour].p * p);
+      } else {
+        calculateP(arr, obj[colour], obj[colour].p * p, depth + 1);
+      }
+    }
+  });
+};
+
+const calculateWordScore = (obj, word) => {
+  // Go through each branch in tree to multiply probabilities
+  // Square each probability and add to array
+  // Return the sum of the array
+  const pValues = [];
+  const depth = 0;
+  calculateP(pValues, obj, 1, depth);
+  const pSquared = pValues.map((value) => value * value);
+  const score = pSquared.reduce((pv, cv) => pv + cv, 0);
+  return score;
+};
+
+const calculate = (filters, mode, fullList) => {
+  const remainingWords = matchesFilters(fullList, [...filters]);
+
+  // These are always the same regardless of mode?
+  // console.log("remainingWords", remainingWords.length);
+  // console.log("fullList", fullList.length);
+
+  let usedList = mode === "hard" ? remainingWords : fullList;
+
+  let minScore = 1;
+  let minWord = usedList[0];
+
+  if (remainingWords.length === 1) {
+    // Answer has been found
+    return { minScore, word: remainingWords[0], list: remainingWords };
+  } else if (remainingWords.length < 4) {
+    // Start guessing potential words to see if you get lucky
+    usedList = remainingWords;
+    for (let i = 1; i < usedList.length; i += 1) {
+      const oneWordObj = fillInObject(usedList[i], remainingWords);
+      const score = calculateWordScore(oneWordObj, usedList[i]);
+      if (score < minScore) {
+        minScore = score;
+        minWord = usedList[i];
+      }
+    }
+    return { minScore, word: minWord, list: remainingWords };
+  } else {
+    for (let i = 1; i < usedList.length; i += 1) {
+      const oneWordObj = fillInObject(usedList[i], remainingWords);
+      const score = calculateWordScore(oneWordObj, usedList[i]);
+      if (score < minScore) {
+        minScore = score;
+        minWord = usedList[i];
+      }
+    }
+    return { minScore, word: minWord, list: remainingWords };
+  }
+};
+
+const makeGuessWithTree = (previousGuesses, wordlist) => {
+  const wordlistWithoutPreviousGuesses = wordlist.filter(
+    (word) => !previousGuesses.includes(word)
+  );
+
+  const filters = [];
+  const mode = "easy";
+  // const mode = "hard";
+  const {
+    minScore,
+    word: minWord,
+    list: remainingWords,
+  } = calculate(filters, mode, wordlistWithoutPreviousGuesses);
+  // console.log("minScore", minScore);
+  // console.log("minWord", minWord);
+  // console.log("remainingWords", remainingWords);
+
+  return minWord;
 };
 
 const makeRandomGuess = (wordlist) => {
@@ -147,8 +299,8 @@ const makeOptimalGuessMinMax = (previousGuesses, wordlist) => {
   const optimalGuesses = guesses.filter(
     (guess) => guess.maxRemainingPossibilities <= minMaxRemainingWords
   );
-  console.log("guesses", guesses);
-  console.log("optimalGuesses", optimalGuesses);
+  // console.log("guesses", guesses);
+  // console.log("optimalGuesses", optimalGuesses);
 
   const { wordle, maxRemainingPossibilities } = optimalGuesses[0];
   return wordle;
@@ -341,14 +493,19 @@ const ask = (query) => {
   );
 };
 
+/**
+ * Guess the next try, wordlist is filtered each time
+ */
 const makeGuess = (previousGuesses, wordlist) => {
   let guess;
   if (!previousGuesses.length) {
-    guess = "ADIEU";
+    // guess = "ADIEU";
+    guess = "RAISE";
   } else {
     // guess = makeRandomGuess(wordlist);
-    guess = makeOptimalGuessMinMax(previousGuesses, wordlist);
+    // guess = makeOptimalGuessMinMax(previousGuesses, wordlist);
     // guess = makeOptimalGuessWithLetterFrequencies(previousGuesses, wordlist);
+    guess = makeGuessWithTree(previousGuesses, wordlist);
   }
   previousGuesses.push(guess);
   return guess;
