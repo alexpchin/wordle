@@ -160,146 +160,146 @@ const makeGuessWithTree = (previousGuesses, wordlist) => {
   return minWord;
 };
 
-const makeRandomGuess = (wordlist) => {
-  return wordlist[Math.floor(Math.random() * wordlist.length)];
-};
+// const makeRandomGuess = (wordlist) => {
+//   return wordlist[Math.floor(Math.random() * wordlist.length)];
+// };
 
-const makeOptimalGuessWithLetterFrequencies = (previousGuesses, wordlist) => {
-  const wordlistWithoutPreviousGuesses = wordlist.filter(
-    (word) => !previousGuesses.includes(word)
-  );
+// const makeOptimalGuessWithLetterFrequencies = (previousGuesses, wordlist) => {
+//   const wordlistWithoutPreviousGuesses = wordlist.filter(
+//     (word) => !previousGuesses.includes(word)
+//   );
 
-  // This is frequencies of all words
-  const frequencies = {
-    A: 8.167,
-    B: 1.492,
-    C: 2.782,
-    D: 4.253,
-    E: 12.702,
-    F: 2.228,
-    G: 2.015,
-    H: 6.094,
-    I: 6.966,
-    J: 0.153,
-    K: 0.772,
-    L: 4.025,
-    M: 2.406,
-    N: 6.749,
-    O: 7.507,
-    P: 1.929,
-    Q: 0.095,
-    R: 5.987,
-    S: 6.327,
-    T: 9.056,
-    U: 2.758,
-    V: 0.978,
-    W: 2.36,
-    X: 0.15,
-    Y: 1.974,
-    Z: 0.074,
-  };
+//   // This is frequencies of all words
+//   const frequencies = {
+//     A: 8.167,
+//     B: 1.492,
+//     C: 2.782,
+//     D: 4.253,
+//     E: 12.702,
+//     F: 2.228,
+//     G: 2.015,
+//     H: 6.094,
+//     I: 6.966,
+//     J: 0.153,
+//     K: 0.772,
+//     L: 4.025,
+//     M: 2.406,
+//     N: 6.749,
+//     O: 7.507,
+//     P: 1.929,
+//     Q: 0.095,
+//     R: 5.987,
+//     S: 6.327,
+//     T: 9.056,
+//     U: 2.758,
+//     V: 0.978,
+//     W: 2.36,
+//     X: 0.15,
+//     Y: 1.974,
+//     Z: 0.074,
+//   };
 
-  // Calculate dynamic frequencies in remaining list
-  // const frequencies = wordlistWithoutPreviousGuesses.reduce(
-  //   (frequencies, word) => {
-  //     word.split("").forEach((letter) => {
-  //       frequencies[letter] = frequencies[letter] ? frequencies[letter] + 1 : 1;
-  //     });
-  //     return frequencies;
-  //   },
-  //   {}
-  // );
-  // console.log("frequencies", frequencies);
+//   // Calculate dynamic frequencies in remaining list
+//   // const frequencies = wordlistWithoutPreviousGuesses.reduce(
+//   //   (frequencies, word) => {
+//   //     word.split("").forEach((letter) => {
+//   //       frequencies[letter] = frequencies[letter] ? frequencies[letter] + 1 : 1;
+//   //     });
+//   //     return frequencies;
+//   //   },
+//   //   {}
+//   // );
+//   // console.log("frequencies", frequencies);
 
-  const sortedWordlist = wordlistWithoutPreviousGuesses
-    .map((word) => {
-      return {
-        word,
-        frequency: word.split("").reduce((sum, letter) => {
-          sum += frequencies[letter];
-          return sum;
-        }, 0),
-      };
-    })
-    // Sort by highest frequency score
-    .sort((a, b) => b.frequency - a.frequency)
-    .map((obj) => obj.word);
+//   const sortedWordlist = wordlistWithoutPreviousGuesses
+//     .map((word) => {
+//       return {
+//         word,
+//         frequency: word.split("").reduce((sum, letter) => {
+//           sum += frequencies[letter];
+//           return sum;
+//         }, 0),
+//       };
+//     })
+//     // Sort by highest frequency score
+//     .sort((a, b) => b.frequency - a.frequency)
+//     .map((obj) => obj.word);
 
-  return sortedWordlist[0];
-};
+//   return sortedWordlist[0];
+// };
 
-/**
- * MinMax? function to take optimise for the guesses
- */
-const makeOptimalGuessMinMax = (previousGuesses, wordlist) => {
-  const wordlistWithoutPreviousGuesses = wordlist.filter(
-    (word) => !previousGuesses.includes(word)
-  );
+// /**
+//  * MinMax? function to take optimise for the guesses
+//  */
+// const makeOptimalGuessMinMax = (previousGuesses, wordlist) => {
+//   const wordlistWithoutPreviousGuesses = wordlist.filter(
+//     (word) => !previousGuesses.includes(word)
+//   );
 
-  let minMaxRemainingWords = wordlistWithoutPreviousGuesses.length;
-  let minMaxWord = "";
-  const guesses = [];
+//   let minMaxRemainingWords = wordlistWithoutPreviousGuesses.length;
+//   let minMaxWord = "";
+//   const guesses = [];
 
-  // Let's say the word is...
-  for (let i = 0; i < wordlistWithoutPreviousGuesses.length; i++) {
-    const wordle = wordlistWithoutPreviousGuesses[i];
-    // console.log({
-    //   percent: i / wordlistWithoutPreviousGuesses.length,
-    //   wordle,
-    //   minMaxWord,
-    //   minMaxRemainingWords,
-    // });
+//   // Let's say the word is...
+//   for (let i = 0; i < wordlistWithoutPreviousGuesses.length; i++) {
+//     const wordle = wordlistWithoutPreviousGuesses[i];
+//     // console.log({
+//     //   percent: i / wordlistWithoutPreviousGuesses.length,
+//     //   wordle,
+//     //   minMaxWord,
+//     //   minMaxRemainingWords,
+//     // });
 
-    const remainingPossibilities = [];
+//     const remainingPossibilities = [];
 
-    // And we decide to guess...
-    for (const guess of wordlistWithoutPreviousGuesses) {
-      // Create possible results for this possibility
-      const results = createResults(wordle, guess);
+//     // And we decide to guess...
+//     for (const guess of wordlistWithoutPreviousGuesses) {
+//       // Create possible results for this possibility
+//       const results = createResults(wordle, guess);
 
-      // Create potential remaining words
-      const newPossibilities = filterWords(
-        wordlistWithoutPreviousGuesses,
-        guess,
-        results
-      );
-      // console.log("remainingPossibilities", newPossibilities.length);
+//       // Create potential remaining words
+//       const newPossibilities = filterWords(
+//         wordlistWithoutPreviousGuesses,
+//         guess,
+//         results
+//       );
+//       // console.log("remainingPossibilities", newPossibilities.length);
 
-      // Store the count of the number of words that this choice elimates
-      remainingPossibilities.push(newPossibilities.length);
+//       // Store the count of the number of words that this choice elimates
+//       remainingPossibilities.push(newPossibilities.length);
 
-      // ?? This will always be smaller?
-      // Save time if we already know we won't win the minimax game
-      if (newPossibilities.length > minMaxRemainingWords) {
-        // console.log("BREAKING...");
-        break;
-      }
-    }
+//       // ?? This will always be smaller?
+//       // Save time if we already know we won't win the minimax game
+//       if (newPossibilities.length > minMaxRemainingWords) {
+//         // console.log("BREAKING...");
+//         break;
+//       }
+//     }
 
-    // What is the smallest elimination word, i.e. most results
-    const maxRemainingPossibilities = Math.max(...remainingPossibilities);
+//     // What is the smallest elimination word, i.e. most results
+//     const maxRemainingPossibilities = Math.max(...remainingPossibilities);
 
-    if (maxRemainingPossibilities <= minMaxRemainingWords) {
-      minMaxWord = wordle;
-      minMaxRemainingWords = maxRemainingPossibilities;
-    }
+//     if (maxRemainingPossibilities <= minMaxRemainingWords) {
+//       minMaxWord = wordle;
+//       minMaxRemainingWords = maxRemainingPossibilities;
+//     }
 
-    guesses.push({
-      wordle,
-      maxRemainingPossibilities,
-    });
-  }
+//     guesses.push({
+//       wordle,
+//       maxRemainingPossibilities,
+//     });
+//   }
 
-  // Pick the guess that "minimizes the maximum number of remaining possibilities" (Knuth)
-  const optimalGuesses = guesses.filter(
-    (guess) => guess.maxRemainingPossibilities <= minMaxRemainingWords
-  );
-  // console.log("guesses", guesses);
-  // console.log("optimalGuesses", optimalGuesses);
+//   // Pick the guess that "minimizes the maximum number of remaining possibilities" (Knuth)
+//   const optimalGuesses = guesses.filter(
+//     (guess) => guess.maxRemainingPossibilities <= minMaxRemainingWords
+//   );
+//   // console.log("guesses", guesses);
+//   // console.log("optimalGuesses", optimalGuesses);
 
-  const { wordle, maxRemainingPossibilities } = optimalGuesses[0];
-  return wordle;
-};
+//   const { wordle, maxRemainingPossibilities } = optimalGuesses[0];
+//   return wordle;
+// };
 
 const numberOfLettersInWord = (wordle, letter) =>
   wordle.split("").filter((w) => w === letter).length;
